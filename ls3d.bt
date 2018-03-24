@@ -1,0 +1,133 @@
+//--------------------------------------
+//--- 010 Editor v5.0 Binary Template
+//
+// File:        ls3d.bt
+// Author:      hdmaster
+// Revision:    0.1
+// Purpose:     Defines some common used stuff
+//--------------------------------------
+
+typedef uchar bool;
+
+enum <byte> FrameType
+{
+    FRAME_VISUAL    = 1,
+    FRAME_LIGHT     = 2,
+    FRAME_CAMERA    = 3,
+    FRAME_SOUND     = 4,
+    FRAME_SECTOR    = 5,
+    FRAME_DUMMY     = 6,
+    FRAME_TARGET    = 7,
+    FRAME_USER      = 8,
+    FRAME_MODEL     = 9,
+    FRAME_JOINT     = 10,
+    FRAME_VOLUME    = 11,
+    FRAME_OCCLUDER  = 12,
+    FRAME_SCENE     = 13,
+    FRAME_AREA      = 14,
+    FRAME_LANDSCAPE = 15
+};
+
+// ToDo: This is the enum from H&D2. Some fields are NOT equal across different engine versions!
+enum <byte> VisualType
+{
+    VISUAL_OBJECT       = 0,
+    VISUAL_LITOBJECT    = 1,
+    VISUAL_SINGLEMESH   = 2,
+    VISUAL_SINGLEMORPH  = 3,
+    VISUAL_BILLBOARD    = 4,
+    VISUAL_MORPH        = 5,
+    VISUAL_LENS         = 6,
+    VISUAL_PROJECTOR    = 7,
+    VISUAL_MIRROR       = 8,
+    VISUAL_EMITOR       = 9,
+    VISUAL_SHADOW       = 10,
+    VISUAL_LANDPATCH    = 11
+};
+
+enum <byte> VolumeType
+{
+    VOLUME_FACE0        = 0,
+    VOLUME_FACE1        = 1,
+    VOLUME_FACE2        = 2,
+    VOLUME_FACE3        = 3,
+    VOLUME_FACE4        = 4,
+    VOLUME_FACE5        = 5,
+    VOLUME_FACE6        = 6,
+    VOLUME_FACE7        = 7,
+
+    VOLUME_XTOBB        = 0x80,
+    VOLUME_AABB         = 0x81,
+    VOLUME_SPHERE       = 0x82,
+    VOLUME_OBB          = 0x83,
+    VOLUME_CYLINDER     = 0x84
+};
+
+typedef struct 
+{
+    float row[4];
+} MATRIX[4];
+
+struct COLOR
+{
+    float r;
+    float g;
+    float b;
+};
+
+struct VECTOR2
+{
+    float x;
+    float y;
+};
+
+struct VECTOR3
+{
+    float x;
+    float y;
+    float z;
+};
+
+struct VECTOR4
+{
+    float x;
+    float y;
+    float z;
+    float w;
+};
+
+struct QUAT_XYZW
+{
+    float x;
+    float y;
+    float z;
+    float w;
+};
+
+struct QUAT_WXYZ
+{
+    float w;
+    float x;
+    float y;
+    float z;
+};
+
+struct VERTEX
+{
+    VECTOR3 p;
+    VECTOR3 n;
+    VECTOR2 uv;
+};
+
+struct FACE
+{
+    uint16 a;
+    uint16 b;
+    uint16 c;
+};
+
+struct PLANE
+{
+    VECTOR3 n;
+    float   d;
+};

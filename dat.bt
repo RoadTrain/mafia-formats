@@ -1,0 +1,27 @@
+//------------------------------------------------
+//--- 010 Editor v8.0.1 Binary Template
+//
+//      File: 
+//   Authors: RoadTrain
+//   Version: 
+//   Purpose: For parsing .dat files from Mafia: The City of Lost Heaven.
+//            These files contain speaking face animations.
+//  Category: 
+// File Mask: /tables/dat/*.dat
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+
+uint32 numFrames;
+uint32 unknown;
+
+struct 
+{
+    ubyte mMouthWidth; // 0x00 - closed, 0xff - duckface
+    ubyte mMouthOpenness; // 0x00 - talks through teeth, 0xff - open mouth
+    ubyte mLipConers; // 0x00 - up, 0xff - down
+    ubyte mEyeLid; // 0x00 - up, 0xff - down
+    ubyte mEyeOpenness; // 0x00 - closed, 0xff - open wide
+    ubyte mEyebrow; // 0x00 - raised, 0xff - normal
+    uint16 mUnk;
+} Frame[numFrames];

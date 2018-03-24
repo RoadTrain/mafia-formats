@@ -1,0 +1,47 @@
+//------------------------------------------------
+//--- 010 Editor v8.0.1 Binary Template
+//
+//      File: 
+//   Authors: RoadTrain
+//   Version: 0.1
+//   Purpose: For parsing check.bin files from Mafia: The City of Lost Heaven.
+//  Category: 
+// File Mask: check.bin
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+uint32 Magic;
+uint32 numPoints;
+
+local int numLinks = 0;
+
+typedef struct
+{
+    float mPos[3];
+    uint16 mType;
+    uint16 mID;
+    uint16 mAreaSize;
+    uint16 mUnk[5];    
+    byte mEnterLinks;    
+    byte mExitLinks;
+} Point;
+
+local int i;
+for (i = 0; i < numPoints; i++)
+{
+    Point point;
+    numLinks = numLinks + point.mEnterLinks; 
+    if (point.mEnterLinks != point.mExitLinks)
+    {
+        Warning("Point %d has different link count", i);
+    }
+}
+
+Printf("numLinks: %d", numLinks);
+
+struct
+{
+    uint16 targetPoint;
+    uint16 linkType;
+    float unk3;
+} Links[numLinks];

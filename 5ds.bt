@@ -1,0 +1,111 @@
+//--------------------------------------
+//--- 010 Editor v5.0 Binary Template
+//
+// File:        5ds.bt
+// Author:      hdmaster
+// Revision:    0.1
+// Purpose:     Defines a template for parsing 5ds files
+//--------------------------------------
+
+#include "ls3d.bt"
+
+enum <uint16> FileVersion
+{
+    VERSION_MAFIA       = 20,
+    VERSION_HD2         = 122,
+    VERSION_CHAMELEON   = 123,
+};
+
+enum <uint32> KeyFlag
+{
+    KEY_POSITION    = 2,
+    KEY_ROTATION    = 4,
+    KEY_SCALE       = 8,
+    KEY_NOTE        = 32
+};
+
+
+void AlignToBytes(int num)
+{
+    local int padding = (FTell() - sizeof(file.header)) % num;
+    if (padding)
+        FSkip(num - padding);
+}
+
+struct FILE
+{
+    struct HEADER {
+        char fourCC[4];
+
+        if (fourCC != "5DS") {
+            Warning("Invalid file format: %s", fourCC);
+            return -1;
+        }
+
+        FileVersion version;
+
+        if (version != VERSION_MAFIA && version != VERSION_HD2 && version != VERSION_CHAMELEON) {
+            Warning("Invalid file version: %d", version);
+            return -1;
+        }
+    
+        FILETIME    timestamp;
+        uint32      dataSize;
+    } header;
+
+    struct DATA
+    {   
+        uint16 numNodes;
+        uint16 numFrames;
+
+        struct LINK
+        {
+            uint32 nameOffset;
+            uint32 dataOffset;
+        } linkOffsetTable[numNodes];
+
+        if (file.header.version != VERSION_MAFIA)
+            AlignToBytes(16);
+
+        struct ANIMATION
+        {
+            uint32 flags;
+            
+            if (flags & KEY_ROTATION) {
+                uint16 numRotationKeys;
+                uint16 rotationFrames[numRotationKeys];
+
+                if (file.header.version != VERSION_MAFIA)
+                    AlignToBytes(16);
+
+                QUAT_XYZW rotationKeys[numRotationKeys];
+            }
+
+            if (flags & KEY_POSITION) {
+                uint16 numPositionKeys;
+                uint16 positionFrames[numPositionKeys];
+
+                if (numPositionKeys % 2 == 0)
+                    FSkip(2);
+            
+                VECTOR3 positionKeys[numPositionKeys];
+            }
+
+            if (flags & KEY_SCALE) {
+                uint16 numScaleKeys;
+                uint16 scaleFrames[numScaleKeys];
+
+                if (numScaleKeys % 2 == 0)
+                    FSkip(2);
+            
+                VECTOR3 scaleKeys[numScaleKeys];
+            }
+            
+        } animations[numNodes]<optimize=false>;
+
+        struct
+        {
+            char name[];
+        } links[numNodes]<optimize=false>;
+    } data;
+} file;

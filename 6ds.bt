@@ -1,0 +1,66 @@
+//--------------------------------------
+//--- 010 Editor v5.0 Binary Template
+//
+// File:        6ds.bt
+// Author:      hdmaster
+// Revision:    0.1
+// Purpose:     Defines a template for parsing 6ds files
+//--------------------------------------
+
+#include "ls3d.bt"
+
+
+enum <uint16> FileVersion
+{
+    VERSION_MAFIA       =  2,
+    VERSION_HD2         = 12,
+    VERSION_CHAMELEON   = 13,
+};
+
+struct FILE
+{
+    struct HEADER
+    {
+        char fourCC[4];
+        
+        if (fourCC != "6DS") {
+            Warning("Invalid file format: %s", fourCC);
+            return -1;
+        }
+
+        FileVersion version;
+        
+        if (version != VERSION_MAFIA && version != VERSION_HD2 && version != VERSION_CHAMELEON) {
+            Warning("Invalid file version: %d", version);
+            return -1;
+        }
+
+        FILETIME timestamp;
+    } header;
+
+    uint16 numVertices;
+    uint16 numVertexIndices;
+    uint16 numLinks;
+
+
+    // shared vertex & face buffer
+
+    if (file.header.version == VERSION_HD2) {
+        VECTOR4 vertices[numVertices];
+    } else {
+        VECTOR3 vertices[numVertices];
+    }
+
+    local uint32 numFaces = numVertexIndices / 3;
+    FACE faces[numFaces];
+
+    // references to 4DS nodes
+
+    struct LINK
+    {
+        uint32 numVertices;     // next n vertices from buffer
+        uint32 numFaces;        // next n faces from buffer
+        byte nameLength;
+        char name[nameLength];
+    } links[numLinks]<optimize=false>;
+} file;

@@ -1,0 +1,266 @@
+//--------------------------------------
+//--- 010 Editor v5.0 Binary Template
+//
+// File:        klz.bt
+// Author:      hdmaster
+// Revision:    0.1
+// Purpose:     Defines a template for parsing KLZ files
+//
+// Special thanks to ASM & Ikaros :)
+//
+//--------------------------------------
+
+#include "ls3d.bt"
+
+// actually two uint16's: version major and version minor
+enum <uint32> FileVersion
+{
+    VERSION_UNDEFINED   = 0x00000000,
+    VERSION_MAFIA       = 0x00000005,
+    VERSION_HD2         = 0x00010005,
+    VERSION_CHAMELEON   = 0x0002000a,
+};
+
+
+struct VOLUME(bool hasLink)
+{
+    VolumeType type;
+    byte sortInfo;
+    byte flags;
+    byte mtlID;
+
+    if (hasLink)
+        uint32 linkID;
+};
+
+
+struct TRIANGLE
+{
+    VOLUME volume(false);
+
+    struct VERTEXLINK
+    {
+        uint16 vertexBufferIndex;
+        uint16 linkIndex;
+    } vertices[3];
+
+    PLANE plane;
+};
+
+struct XTOBB
+{
+    VOLUME volume(true);
+
+    VECTOR3 min;
+    VECTOR3 max;
+
+    if (file.header.version == VERSION_HD2) {
+        VECTOR4 minExtent;
+        VECTOR4 maxExtent;
+    } else {
+        VECTOR3 minExtent;
+        VECTOR3 maxExtent;
+    }
+
+    MATRIX transform;
+    MATRIX inverseTransform;
+};
+
+struct AABB
+{
+    VOLUME volume(true);
+    
+    VECTOR3 min;
+    VECTOR3 max;
+};
+
+struct SPHERE
+{
+    VOLUME volume(true);
+
+    if (file.header.version == VERSION_HD2) {
+        float radius;
+        float unknown;
+        VECTOR3 position;
+        float unknown;
+
+    } else {
+        VECTOR3 position;
+        float radius;
+    }
+};
+
+struct OBB
+{
+    VOLUME volume(true);
+    
+    VECTOR3 minExtent;
+    VECTOR3 maxExtent;
+
+    MATRIX transform;
+    MATRIX inverseTransform;
+};
+
+struct CYLINDER
+{
+    VOLUME volume(true);
+
+    VECTOR2 position;
+    float radius;
+        
+    if (file.header.version == VERSION_HD2)
+        float unknown[3];
+};
+
+struct CELL
+{
+    uint32 numReferences;
+    int32 unknown;
+    float height;
+
+    if (file.header.version != VERSION_CHAMELEON)
+        int32 unknown;
+    
+    if (numReferences) {
+        struct 
+        { 
+            int32 volumeBufferOffset : 24;
+            int32 volumeType         :  8;
+        } references[numReferences];
+
+        if (file.header.version == VERSION_MAFIA) {
+            byte flags[numReferences];
+            local int padding = numReferences % 4;
+            if (padding != 0)
+                FSkip(4 - padding);
+        }
+    }
+};
+
+
+struct FILE
+{
+    struct HEADER
+    {
+        char fourCC[4];
+        if (fourCC != "GifC") {
+            Warning("Invalid file format: %s", fourCC);
+            return -1;
+        }
+        
+        FileVersion version;
+
+        if (version != VERSION_MAFIA && version != VERSION_HD2 && version != VERSION_CHAMELEON) {
+            Warning("Invalid file version: %d", version);
+            return -1;
+        }
+    
+        uint32 gridDataOffset;
+        uint32 numLinks;
+        uint32 unknown[2];
+    } header;
+
+    uint32 linkOffsetTable[header.numLinks];
+
+    struct // LINKS
+    {
+        struct LINK
+        {
+            uint32 type;
+            char name[];
+
+            local int padding = (Strlen(name) + 1) % 4;
+            if (padding != 0)
+                FSkip(4 - padding);
+        } links[header.numLinks]<optimize=false>;
+    } links;
+
+    struct GRID
+    {
+        float minX;
+        float minY;
+        float maxX;
+        float maxY;
+        float cellWidth;
+        float cellLength;
+        uint32 width;
+        uint32 length;
+        float unknown;
+    
+        if (file.header.version == VERSION_HD2) {
+            float minZ;
+            float maxZ;
+            float cellHeight;
+            uint32 height;
+            FSkip(5 * sizeof(int32));
+        } else if (file.header.version == VERSION_CHAMELEON) {
+            FSkip(3 * sizeof(int32));
+        } else if (file.header.version == VERSION_MAFIA) {
+            FSkip(3 * sizeof(int32));
+        }
+
+        uint32 numFaces;
+        FSkip(4); // Reserved pointers
+        uint32 numXTOBBs;
+        FSkip(4);
+        uint32 numAABBs;
+        FSkip(4);
+        uint32 numSpheres;
+        FSkip(4);
+        uint32 numOBBs;
+        FSkip(4);
+        uint32 numCylinders;
+        FSkip(4);
+
+        if (file.header.version == VERSION_HD2)
+            FSkip(11 * sizeof(int32));
+        else if (file.header.version == VERSION_CHAMELEON)
+            FSkip(10 * sizeof(int32));
+        else if (file.header.version == VERSION_MAFIA)
+            FSkip( 2 * sizeof(int32));
+
+        struct
+        {
+            float x[width + 1];
+            if (file.header.version == VERSION_HD2)
+                float z[height + 1];
+            float y[length + 1];
+        } bounds;
+    } grid;
+
+    if (file.header.version == VERSION_HD2)
+        FSkip(4 * sizeof(int32));
+    else if (file.header.version == VERSION_CHAMELEON)
+        FSkip(2 * sizeof(int32));
+    else if (file.header.version == VERSION_MAFIA)
+        FSkip(1 * sizeof(int32));
+    
+    if (grid.numFaces)
+        TRIANGLE faces[grid.numFaces]<optimize=true>;
+    if (grid.numAABBs)
+        AABB aabbs[grid.numAABBs]<optimize=true>;
+    if (grid.numXTOBBs)
+        XTOBB xtobbs[grid.numXTOBBs]<optimize=true>;
+    if (grid.numCylinders)    
+        CYLINDER cylinders[grid.numCylinders]<optimize=true>;
+    if (grid.numOBBs)
+        OBB obbs[grid.numOBBs]<optimize=true>;
+    if (grid.numSpheres)
+        SPHERE spheres[grid.numSpheres]<optimize=true>;
+
+    if (file.header.version == VERSION_HD2)
+        FSkip(4 * sizeof(int32));
+    else if (file.header.version == VERSION_CHAMELEON)
+        FSkip(4 * sizeof(int32));
+    else if (file.header.version == VERSION_MAFIA)
+        FSkip(1 * sizeof(int32));
+
+    struct
+    {
+        if (file.header.version == VERSION_HD2)
+            CELL cells[grid.length * grid.height * grid.width]<optimize=false>;
+        else
+            CELL cells[grid.length * grid.width]<optimize=false>;
+    } cells;
+        
+} file;

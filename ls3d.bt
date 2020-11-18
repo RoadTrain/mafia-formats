@@ -2,8 +2,8 @@
 //--- 010 Editor v5.0 Binary Template
 //
 // File:        ls3d.bt
-// Author:      hdmaster
-// Revision:    0.1
+// Author:      hdmaster, small update by pudingus
+// Revision:    0.2
 // Purpose:     Defines some common used stuff
 //--------------------------------------
 
@@ -68,11 +68,19 @@ typedef struct
     float row[4];
 } MATRIX[4];
 
-struct COLOR
+struct COLOR3
 {
     float r;
     float g;
     float b;
+};
+
+struct COLOR4
+{
+    float r;
+    float g;
+    float b;
+    float a;
 };
 
 struct VECTOR2

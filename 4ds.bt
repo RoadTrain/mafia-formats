@@ -2,8 +2,8 @@
 //--- 010 Editor v5.0 Binary Template
 //
 // File:        4ds.bt
-// Author:      hdmaster, minor updates by RoadTrain
-// Revision:    0.2
+// Author:      hdmaster, minor updates by RoadTrain, pudingus
+// Revision:    0.3
 // Purpose:     Defines a template for parsing 4ds files
 //--------------------------------------
 
@@ -33,42 +33,38 @@ struct MATERIAL
     uint32 flags<format=hex>; 
 
     if (file.version == VERSION_MAFIA) {
-        COLOR ambient;
-        COLOR diffuse;
-        COLOR emissive;
-        float opacity;
+        COLOR3 ambient;
+        COLOR3 diffuse;
+        COLOR3 emissive;
     } else {
-        COLOR ambient;
-        FSkip(4);
-        COLOR diffuse;
-        FSkip(4);
-        COLOR specular;
-        FSkip(4);
-        COLOR emissive;
-        FSkip(4);
+        COLOR4 ambient;
+        COLOR4 diffuse;
+        COLOR4 specular;
+        COLOR4 emissive;
         float shininess;
-        float opacity;
     }
+
+    float opacity;
 
     local bool hasTex<hidden=true>;
 
     if (flags & MTL_REFLECTIONTEX) {
         float reflectionLevel;
-        byte reflectionTextureNameLength;
+        ubyte reflectionTextureNameLength;
         if (reflectionTextureNameLength > 0)
             char reflectionTextureName[reflectionTextureNameLength];
     }
 
     if (flags & MTL_DIFFUSETEX) {
         hasTex = true;
-        byte diffuseTextureNameLength;
+        ubyte diffuseTextureNameLength;
         if (diffuseTextureNameLength > 0)
             char diffuseTextureName[diffuseTextureNameLength];
     }
 
     if (flags & MTL_OPACITYTEX && !(flags & MTL_IMAGEALPHA)) {
         hasTex = true;
-        byte opacityTextureNameLength;
+        ubyte opacityTextureNameLength;
         if (opacityTextureNameLength > 0)
             char opacityTextureName[opacityTextureNameLength];
     }
@@ -100,7 +96,7 @@ struct OBJECT
     uint16 instanceID;
 
     if (instanceID == 0) {
-        byte numLODs;
+        ubyte numLODs;
         struct LOD
         {
             float clippingRange;
@@ -108,30 +104,28 @@ struct OBJECT
                 uint32 extraDataLength;
             
             uint16 numVertices;
-            if (numVertices) {
-                VERTEX vertices[numVertices];
+            VERTEX vertices[numVertices];
 
-                if (file.version != VERSION_MAFIA) 
-                    float extraData[extraDataLength*numVertices];
-    
-                byte numFaceGroups;
-                struct FACEGROUP
-                {
-                    uint16 numFaces;
-                    FACE   faces[numFaces];
-                    uint16 mtlID;
-                } faceGroups[numFaceGroups]<optimize=false>;
-            }
+            if (file.version != VERSION_MAFIA)
+                float extraData[extraDataLength*numVertices];
+
+            ubyte numFaceGroups;
+            struct FACEGROUP
+            {
+                uint16 numFaces;
+                FACE   faces[numFaces];
+                uint16 mtlID;
+            } faceGroups[numFaceGroups]<optimize=false>;
         } LODs[numLODs]<optimize=false>;
     }
 };
 
-struct SINGLEMESH(byte numLODs)
+struct SINGLEMESH(ubyte numLODs)
 {
     if (file.version == VERSION_MAFIA) {
         struct
         {
-            byte numBones;
+            ubyte numBones;
         
             uint32 numNonWeightedVerts;
         
@@ -153,7 +147,7 @@ struct SINGLEMESH(byte numLODs)
         } LODs[numLODs]<optimize=false>;
 
     } else {
-        byte numBones;
+        ubyte numBones;
             
         if (file.version == VERSION_HD2) {
             VECTOR4 min;
@@ -163,7 +157,7 @@ struct SINGLEMESH(byte numLODs)
             VECTOR3 max;
         }
 
-        byte parentIDs[numBones];
+        ubyte parentIDs[numBones];
 
         struct //BONE
         {
@@ -182,8 +176,8 @@ struct SINGLEMESH(byte numLODs)
             uint32 numWeights;
             struct WEIGHT
             {
-                byte boneID;
-                byte unknown;
+                ubyte boneID;
+                ubyte weight;
             } weights[numWeights];
         } LODs[numLODs]<optimize=false>;
     }
@@ -197,41 +191,54 @@ struct BILLBOARD
 
 struct MORPH
 {
-    byte numTargets;
-    byte numChannels;
-    byte unknown;
+    ubyte numTargets;
 
     if (numTargets > 0) {
-        struct MORPHCHANNEL
+        ubyte numChannels;
+        ubyte numLods;
+
+        struct MORPHLOD
         {
-            uint16 numVertices;
-        
-            if (numVertices > 0) {
-                struct MORPHEDVERTEX
-                {
-                    struct MORPHTARGET
+            struct MORPHCHANNEL
+            {
+                uint16 numVertices;
+            
+                if (numVertices > 0) {
+                    struct MORPHEDVERTEX
                     {
-                        VECTOR3 p;
-                        VECTOR3 n;
-                    } morphTargets[numTargets]<optimize=false>;
-                } vertices[numVertices]<optimize=false>;
-        
-                bool unknown;
-                if (unknown != 0)
-                    uint16 vertexIndices[numVertices];
-            }
-        } channels[numChannels]<optimize=false>;
-        
-        if (file.version == VERSION_HD2)
-            float unknown2[12];
-        else
-            float unknown2[10];
+                        struct MORPHTARGET
+                        {
+                            VECTOR3 p;
+                            VECTOR3 n;
+                        } morphTargets[numTargets]<optimize=false>;
+                    } vertices[numVertices]<optimize=false>;
+            
+                    bool unknown;
+                    if (unknown != 0)
+                        uint16 vertexIndices[numVertices];
+                }
+            } channels[numChannels]<optimize=false>;
+            
+        } lods[numLods]<optimize=false>;
+
+        if (file.version == VERSION_HD2) {
+            VECTOR4 min;
+            VECTOR4 max;
+            VECTOR3 center;
+            float dist;
+        }
+        else {
+            VECTOR3 min;
+            VECTOR3 max;
+            VECTOR3 center;
+            float dist;
+        }
     }
 };
 
 struct LENSFLARE
 {
-    byte numGlows;
+    ubyte numGlows;
     
     struct GLOW
     {
@@ -257,13 +264,14 @@ struct MIRROR
     }
 
     float  unknown[4];
-    MATRIX reflectionMatrix;
-    COLOR  color;
+    MATRIX viewboxMatrix;
 
     if (file.version == VERSION_HD2)
-        FSkip(4);
+        COLOR4 color;
+    else
+        COLOR3 color;
 
-    float  reflectionStrength;
+    float  activeRange;
     uint32 numVertices;
     uint32 numFaces;
 
@@ -284,7 +292,7 @@ struct SECTOR
     if (file.version == VERSION_HD2) {
         VECTOR4 min;
         VECTOR4 max;
-        VECTOR4 vertices[numVertices];    
+        VECTOR4 vertices[numVertices];
     } else {
         if (file.version != VERSION_MAFIA) {
             VECTOR3 min;
@@ -300,10 +308,10 @@ struct SECTOR
         VECTOR3 max;
     }
 
-    byte numPortals;
+    ubyte numPortals;
     struct PORTAL
     {
-        byte    numVertices;
+        ubyte   numVertices;
         PLANE   plane;
         uint32  flags;
         float   nearRange;
@@ -336,7 +344,7 @@ struct DUMMY
 struct TARGET
 {
     uint16  unknown;
-    byte    numLinks;
+    ubyte   numLinks;
     uint16  linkIDs[numLinks];
 };
 
@@ -360,36 +368,52 @@ struct OCCLUDER
     FACE faces[numFaces];
 };
 
+struct PROJECTOR
+{
+    uint32 unknown;
+};
+
+struct EMITOR
+{
+    uint32 unknown;
+    ubyte  unknown2;
+};
+
+struct LIGHT
+{
+    FSkip(84);
+};
+
 struct NODE
 {
     FrameType frameType;
     if (frameType == FRAME_VISUAL) {
         VisualType  visualType;
-        byte        visualFlags[2];
+        ubyte       visualFlags[2];
     }
 
-    ushort parentID;
+    uint16 parentID;
+
+    VECTOR3 position;
 
     if (file.version == VERSION_MAFIA) {
-        VECTOR3 position;
         VECTOR3 scale;
         QUAT_WXYZ rotation;
 
     } else {
-        VECTOR3 position;
         QUAT_XYZW rotation;
         VECTOR3 scale;
     
         if (file.version == VERSION_HD2)
-            FSkip(4);
+            float unknown1;
     }
 
-    byte cullingFlags;
+    ubyte cullingFlags;
 
-    byte nameLength<hidden=true>;
+    ubyte nameLength<hidden=false>;
     if (nameLength > 0)
         char name[nameLength];
-    byte userPropertiesLength<hidden=true>;
+    ubyte userPropertiesLength<hidden=false>;
     if (userPropertiesLength > 0)
         char userProperties[userPropertiesLength];
 
@@ -397,6 +421,9 @@ struct NODE
     case FRAME_VISUAL: {
         switch (visualType) {
         case VISUAL_OBJECT:
+            OBJECT object;
+            break;
+        case VISUAL_LITOBJECT:
             OBJECT object;
             break;
         case VISUAL_SINGLEMESH:
@@ -419,14 +446,23 @@ struct NODE
         case VISUAL_LENS:
             LENSFLARE lens;
             break;
+        case VISUAL_PROJECTOR:
+            PROJECTOR projector;
+            break;
         case VISUAL_MIRROR:
             MIRROR mirror;
+            break;
+        case VISUAL_EMITOR:
+            EMITOR emitor;
             break;
         default:
             Warning("Invalid visual type: %d", visualType);
             return -1;
         }
     } break;
+    case FRAME_LIGHT:
+        LIGHT light;
+        break;
     case FRAME_SECTOR:
         SECTOR sector;
         break;
